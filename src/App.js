@@ -20,7 +20,6 @@ const APP_ID = 'FaceApp';
 // const MODEL_ID = 'general-english-image-caption-clip'; 
 
 
-
 const returnClarifaiRequestoptions = (imageURL) => {
   const IMAGE_URL = imageURL;
   const raw = JSON.stringify({
@@ -51,8 +50,6 @@ const returnClarifaiRequestoptions = (imageURL) => {
 }
 
 
-
-
 class App extends Component {
   constructor() {
     super();
@@ -61,28 +58,49 @@ class App extends Component {
       imageURL: "",
       box: {},
       route: 'signin',
-      isSignedIn: false
+      isSignedIn: false,
+      user: {
+        id: '',
+        name: '',
+        email: '',
+        entries: 0,
+        joined: ''
+      }
     }
   }
 
+  loadUser = (data) => {
+    this.setState({
+      user: {
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        entries: data.entries,
+        joined: data.joined
+      }
+    })
+  }
+  // componentDidMount() {
+  //   fetch('http://localhost:3000/')
+  //     .then(response => response.json())
+  //     .then(console.log)
+  // }
   // calculateFaceLocation2 = (clarifaiFace,iwidth,iheight) => {
 
   // }
   calculateFaceLocation = (data) => {
 
-    // for (let i=0 ; i<(data.outputs[0].data.regions.length) ;i++){
     const clarifaiFace = data.outputs[0].data.regions[0].region_info.bounding_box;
     const image = document.getElementById("inputimage");
-    const iwidth = Number(image.width);
-    const iheight = Number(image.height);
+    const width = Number(image.width);
+    const height = Number(image.height);
     return {
-      leftCol: clarifaiFace.left_col * iwidth,
-      topRow: clarifaiFace.top_row * iheight,
-      rightCol: iwidth - (clarifaiFace.right_col * iwidth),
-      bottomRow: iheight - (clarifaiFace.bottom_row * iheight)
+      leftCol: clarifaiFace.left_col * width,
+      topRow: clarifaiFace.top_row * height,
+      rightCol: width - (clarifaiFace.right_col * width),
+      bottomRow: height - (clarifaiFace.bottom_row * height)
     }
-    //  return this.calculateFaceLocation2(clarifaiFace,iwidth,iheight);
-    // }
+
   }
 
   displayFaceBox = (box) => {
@@ -116,14 +134,27 @@ class App extends Component {
     displayBox.style.display = "block";
     // console.log("click");
     // eslint-disable-next-line
-    fetch("https://api.clarifai.com/v2/models/" + "face-detection" + "/outputs", returnClarifaiRequestoptions(input))
-      .then(response => response.json())
+    fetch("https://api.clarifai.com/v2/models/" + "face-detection" + "/outputs", returnClarifaiRequestoptions(this.state.input))
+    .then(response => response.json())
+    .then(response => {
+      console.log('hi', response)
+      if (response) {
+        fetch('http://localhost:3000/image', {
+          method: 'put',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            id: this.state.user.id
+          })
+        })
+          .then(response => response.json())
+          .then(count => {
+            this.setState(Object.assign(this.state.user, { entries: count}))
+          })
 
-      .then(response => this.displayFaceBox(this.calculateFaceLocation(response)))
-      .catch(error => console.log('error', error));
-
-
-
+      }
+      this.displayFaceBox(this.calculateFaceLocation(response))
+    })
+    .catch(err => console.log(err));
   }
 
   onButtonGenerate = () => {
@@ -131,9 +162,8 @@ class App extends Component {
 
     let displayBox = document.getElementById("box");
     displayBox.style.display = "none";
-    // console.log("click generate");
     // eslint-disable-next-line
-    fetch("https://api.clarifai.com/v2/models/" + 'general-english-image-caption-clip' + "/outputs", returnClarifaiRequestoptions(input))
+    fetch("https://api.clarifai.com/v2/models/" + 'general-english-image-caption-clip' + "/outputs", returnClarifaiRequestoptions(this.state.input))
       .then(response => response.json())
       .then(response => this.displayCaption(response))
       .catch(error => console.log('error', error));
@@ -149,7 +179,6 @@ class App extends Component {
     this.setState({ route: route });
   }
 
-
   render() {
     const { isSignedIn, imageURL, route, box } = this.state;
     return (
@@ -159,7 +188,7 @@ class App extends Component {
         <Navigation isSignedIn={isSignedIn} onRouteChange={this.onRouteChange} />
         {route === 'home'
           ? <div> <Logo />
-            <Rank />
+            <Rank name={this.state.user.name} entries={this.state.user.entries} />
             <ImageLinkForm
               onInputChange={this.onInputChange}
               onButtonSubmit={this.onButtonSubmit}
@@ -168,8 +197,8 @@ class App extends Component {
             <FaceRecognition box={box} imageURL={imageURL} />
           </div>
           : (route === 'signin'
-            ? <SignIn onRouteChange={this.onRouteChange} />
-            : <Register onRouteChange={this.onRouteChange} />
+            ? <SignIn loadUser={this.loadUser} onRouteChange={this.onRouteChange} />
+            : <Register loadUser={this.loadUser} onRouteChange={this.onRouteChange} />
           )
         }
 
