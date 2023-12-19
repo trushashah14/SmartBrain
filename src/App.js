@@ -49,162 +49,171 @@ const returnClarifaiRequestoptions = (imageURL) => {
   return requestOptions
 }
 
+const initialState = {
+  input: "",
+  imageURL: "",
+  box: {},
+  route: 'signin',
+  isSignedIn: false,
+  user: {
+    id: '',
+    name: '',
+    email: '',
+    entries: 0,
+    joined: ''
+
+  }
+}
 
 class App extends Component {
   constructor() {
     super();
-    this.state = {
-      input: "",
-      imageURL: "",
-      box: {},
-      route: 'signin',
-      isSignedIn: false,
-      user: {
-        id: '',
-        name: '',
-        email: '',
-        entries: 0,
-        joined: ''
-      }
+    this.state = initialState;
+  }
+
+
+loadUser = (data) => {
+  this.setState({
+    user: {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      entries: data.entries,
+      joined: data.joined
     }
+  })
+}
+// componentDidMount() {
+//   fetch('http://localhost:3000/')
+//     .then(response => response.json())
+//     .then(console.log)
+// }
+// calculateFaceLocation2 = (clarifaiFace,iwidth,iheight) => {
+
+// }
+calculateFaceLocation = (data) => {
+
+  const clarifaiFace = data.outputs[0].data.regions[0].region_info.bounding_box;
+  const image = document.getElementById("inputimage");
+  const width = Number(image.width);
+  const height = Number(image.height);
+  return {
+    leftCol: clarifaiFace.left_col * width,
+    topRow: clarifaiFace.top_row * height,
+    rightCol: width - (clarifaiFace.right_col * width),
+    bottomRow: height - (clarifaiFace.bottom_row * height)
   }
 
-  loadUser = (data) => {
-    this.setState({
-      user: {
-        id: data.id,
-        name: data.name,
-        email: data.email,
-        entries: data.entries,
-        joined: data.joined
-      }
-    })
-  }
-  // componentDidMount() {
-  //   fetch('http://localhost:3000/')
-  //     .then(response => response.json())
-  //     .then(console.log)
-  // }
-  // calculateFaceLocation2 = (clarifaiFace,iwidth,iheight) => {
+}
 
-  // }
-  calculateFaceLocation = (data) => {
+displayFaceBox = (box) => {
 
-    const clarifaiFace = data.outputs[0].data.regions[0].region_info.bounding_box;
-    const image = document.getElementById("inputimage");
-    const width = Number(image.width);
-    const height = Number(image.height);
-    return {
-      leftCol: clarifaiFace.left_col * width,
-      topRow: clarifaiFace.top_row * height,
-      rightCol: width - (clarifaiFace.right_col * width),
-      bottomRow: height - (clarifaiFace.bottom_row * height)
-    }
+  this.setState({ box: box });
 
-  }
+}
 
-  displayFaceBox = (box) => {
+displayCaption = (data) => {
+  let captionField = document.getElementById("caption-field");
+  captionField.style.display = "block";
+  let caption = data.outputs[0].data.text.raw;
+  // console.log(caption.charAt(0).toUpperCase() + caption.slice(1));
+  captionField.value = caption.charAt(0).toUpperCase() + caption.slice(1);
 
-    this.setState({ box: box });
+}
 
-  }
+onInputChange = (event) => {
+  this.setState({ input: event.target.value });
+  let captionField = document.getElementById("caption-field");
+  let displayBox = document.getElementById("box");
+  displayBox.style.display = "none";
+  captionField.value = " ";
 
-  displayCaption = (data) => {
-    let captionField = document.getElementById("caption-field");
-    captionField.style.display = "block";
-    let caption = data.outputs[0].data.text.raw;
-    // console.log(caption.charAt(0).toUpperCase() + caption.slice(1));
-    captionField.value = caption.charAt(0).toUpperCase() + caption.slice(1);
+}
 
-  }
+onButtonSubmit = () => {
+  this.setState({ imageURL: this.state.input });
 
-  onInputChange = (event) => {
-    this.setState({ input: event.target.value });
-    let captionField = document.getElementById("caption-field");
-    let displayBox = document.getElementById("box");
-    displayBox.style.display = "none";
-    captionField.value = " ";
-
-  }
-
-  onButtonSubmit = () => {
-    this.setState({ imageURL: this.state.input });
-
-    let displayBox = document.getElementById("box");
-    displayBox.style.display = "block";
-    // console.log("click");
-    // eslint-disable-next-line
-    fetch("https://api.clarifai.com/v2/models/" + "face-detection" + "/outputs", returnClarifaiRequestoptions(this.state.input))
+  let displayBox = document.getElementById("box");
+  displayBox.style.display = "block";
+  // console.log("click");
+  // eslint-disable-next-line
+  fetch("https://api.clarifai.com/v2/models/" + "face-detection" + "/outputs", returnClarifaiRequestoptions(this.state.input))
     .then(response => response.json())
     .then(response => {
       console.log('hi', response)
       if (response) {
         fetch('http://localhost:3000/image', {
           method: 'put',
-          headers: {'Content-Type': 'application/json'},
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             id: this.state.user.id
           })
         })
           .then(response => response.json())
           .then(count => {
-            this.setState(Object.assign(this.state.user, { entries: count}))
+            this.setState(Object.assign(this.state.user, { entries: count }))
           })
+          .catch(console.log)
 
       }
       this.displayFaceBox(this.calculateFaceLocation(response))
     })
     .catch(err => console.log(err));
+}
+
+onButtonGenerate = () => {
+  this.setState({ imageURL: this.state.input });
+
+  let displayBox = document.getElementById("box");
+  let captionField = document.getElementById("caption-field");
+  displayBox.style.display = "none";
+  captionField.value = "Loading ...";
+  // eslint-disable-next-line
+  fetch("https://api.clarifai.com/v2/models/" + 'general-english-image-caption-clip' + "/outputs", returnClarifaiRequestoptions(this.state.input))
+    .then(response => response.json())
+    .then(response => this.displayCaption(response))
+    .then(count => {
+      this.setState(Object.assign(this.state.user, { entries: count }))
+    })
+    .catch(error => console.log('error', error));
+
+}
+
+onRouteChange = (route) => {
+  if (route === 'signout') {
+    this.setState(initialState)
+  } else if (route === 'home') {
+    this.setState({ isSignedIn: true })
   }
+  this.setState({ route: route });
+}
 
-  onButtonGenerate = () => {
-    this.setState({ imageURL: this.state.input });
+render() {
+  const { isSignedIn, imageURL, route, box } = this.state;
+  return (
 
-    let displayBox = document.getElementById("box");
-    displayBox.style.display = "none";
-    // eslint-disable-next-line
-    fetch("https://api.clarifai.com/v2/models/" + 'general-english-image-caption-clip' + "/outputs", returnClarifaiRequestoptions(this.state.input))
-      .then(response => response.json())
-      .then(response => this.displayCaption(response))
-      .catch(error => console.log('error', error));
+    <div className="App">
+      <ParticlesBg type="cobweb" bg={true} color='#FFFFFF' num={80} />
+      <Navigation isSignedIn={isSignedIn} onRouteChange={this.onRouteChange} />
+      {route === 'home'
+        ? <div> <Logo />
+          <Rank name={this.state.user.name} entries={this.state.user.entries} />
+          <ImageLinkForm
+            onInputChange={this.onInputChange}
+            onButtonSubmit={this.onButtonSubmit}
+            onButtonGenerate={this.onButtonGenerate}
+          />
+          <FaceRecognition box={box} imageURL={imageURL} />
+        </div>
+        : (route === 'signin'
+          ? <SignIn loadUser={this.loadUser} onRouteChange={this.onRouteChange} />
+          : <Register loadUser={this.loadUser} onRouteChange={this.onRouteChange} />
+        )
+      }
 
-  }
-
-  onRouteChange = (route) => {
-    if (route === 'signout') {
-      this.setState({ isSignedIn: false })
-    } else if (route === 'home') {
-      this.setState({ isSignedIn: true })
-    }
-    this.setState({ route: route });
-  }
-
-  render() {
-    const { isSignedIn, imageURL, route, box } = this.state;
-    return (
-
-      <div className="App">
-        <ParticlesBg type="cobweb" bg={true} color='#FFFFFF' num={80} />
-        <Navigation isSignedIn={isSignedIn} onRouteChange={this.onRouteChange} />
-        {route === 'home'
-          ? <div> <Logo />
-            <Rank name={this.state.user.name} entries={this.state.user.entries} />
-            <ImageLinkForm
-              onInputChange={this.onInputChange}
-              onButtonSubmit={this.onButtonSubmit}
-              onButtonGenerate={this.onButtonGenerate}
-            />
-            <FaceRecognition box={box} imageURL={imageURL} />
-          </div>
-          : (route === 'signin'
-            ? <SignIn loadUser={this.loadUser} onRouteChange={this.onRouteChange} />
-            : <Register loadUser={this.loadUser} onRouteChange={this.onRouteChange} />
-          )
-        }
-
-      </div>
-    )
-  };
+    </div>
+  )
+};
 }
 
 export default App;
