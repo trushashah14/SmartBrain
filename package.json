@@ -1,5 +1,6 @@
 {
   "name": "facerecognitionapp",
+  "homepage": "https://smart-brain-recognition.onrender.com/",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
