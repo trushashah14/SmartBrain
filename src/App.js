@@ -114,7 +114,6 @@ displayFaceBox = (box) => {
 
 displayCaption = (data) => {
   let captionField = document.getElementById("caption-field");
-  captionField.style.display = "block";
   let caption = data.outputs[0].data.text.raw;
   // console.log(caption.charAt(0).toUpperCase() + caption.slice(1));
   captionField.value = caption.charAt(0).toUpperCase() + caption.slice(1);
@@ -166,8 +165,10 @@ onButtonGenerate = () => {
 
   let displayBox = document.getElementById("box");
   let captionField = document.getElementById("caption-field");
-  displayBox.style.display = "none";
+  captionField.style.display = "block";
   captionField.value = "Loading ...";
+  displayBox.style.display = "none";
+  
   // eslint-disable-next-line
   fetch("https://api.clarifai.com/v2/models/" + 'general-english-image-caption-clip' + "/outputs", returnClarifaiRequestoptions(this.state.input))
     .then(response => response.json())
