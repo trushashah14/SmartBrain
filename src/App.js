@@ -173,9 +173,6 @@ onButtonGenerate = () => {
   fetch("https://api.clarifai.com/v2/models/" + 'general-english-image-caption-clip' + "/outputs", returnClarifaiRequestoptions(this.state.input))
     .then(response => response.json())
     .then(response => this.displayCaption(response))
-    .then(count => {
-      this.setState(Object.assign(this.state.user, { entries: count }))
-    })
     .catch(error => console.log('error', error));
 
 }
